@@ -4,7 +4,9 @@ import com.chatutils.ChatCompactHandler;
 import com.chatutils.ChatUtils;
 import com.chatutils.ChatUtilsState;
 import com.chatutils.hook.ChatLineHook;
+import com.chatutils.hook.GuiChatHook;
 import com.chatutils.hook.GuiNewChatHook;
+import net.minecraft.client.gui.GuiChat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ChatLine;
 import net.minecraft.client.gui.FontRenderer;
@@ -118,9 +120,14 @@ public abstract class MixinGuiNewChat extends net.minecraft.client.gui.Gui imple
 
     @Inject(method = "drawChat", at = @At("HEAD"))
     private void chatutils$computeHoveredLine(int updateCounter, CallbackInfo ci) {
+        // Always reset so stale highlights never bleed into non-typing frames
         chatutils$hoveredLine = null;
         if (!ChatUtils.Config.chatCopyEnabled) return;
-        if (!getChatOpen()) return;
+        // Only highlight when the player has actually opened chat for TYPING.
+        // getChatOpen() returns true even in scroll-only / view mode (e.g. Z key),
+        // so we additionally check that the GuiChat input field is focused.
+        if (!(mc.currentScreen instanceof GuiChat)) return;
+        if (!((GuiChatHook) mc.currentScreen).chatutils$isTypingMode()) return;
         chatutils$hoveredLine = chatutils$getHoveredChatLine(Mouse.getX(), mc.displayHeight - Mouse.getY() - 1);
     }
 
